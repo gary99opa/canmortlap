@@ -11,22 +11,21 @@ Enjoy!
 
 -=(GaryOPA)=-
 
-*************************************************
-* CANMORTLAP  v1.00.9201.15 by 9T9 Assembly Sig *
-*                                               *
-* Canada Mortgage and Loan Amortization Program *
-*                                               *
-* (c)1992 By O.P.A & 9T9 Assembly Sig & GaryOPA *
-*                                               *
-* Released on: May  4st, 2024 by Gary Bowser    *
-* Uploaded to: TI99.AtariAge.com via GaryOPA    *
-* Mirrored to: gary99opa GitHub Repositories    *
-*                                               *
-* MORT-S    -> The Assemble Source Code File    *
-* MORT-MAIN -> Main Mortage and Loan Program    *
-* MORT-BLWP -> Commonly Used BLWP/EA Library    *
-* MORT-UTIL -> Various Utilities/Subroutines    *
-* MORT-DATA -> Data Block after the Program!    *
-* MORT-TEXT -> Text Block after the DataArea    *
-*                                               *
-*************************************************
+*
+* CANMORTLAP  v1.00.9201.15 by 9T9 Asssembly Sig
+*
+* Canada Mortgage and Loan Amortization Program 
+*                                               
+* (c)1992 By O.P.A & 9T9 Assembly Sig & GaryOPA 
+*                                               
+* Released on: May  4st, 2024 by Gary Bowser    
+* Uploaded to: TI99.AtariAge.com via GaryOPA    
+* Mirrored to: gary99opa GitHub Repositories    
+*                                               
+* MORT-S    -> The Assemble Source Code File    
+* MORT-MAIN -> Main Mortage and Loan Program    
+* MORT-BLWP -> Commonly Used BLWP/EA Library    
+* MORT-UTIL -> Various Utilities/Subroutines    
+* MORT-DATA -> Data Block after the Program!    
+* MORT-TEXT -> Text Block after the DataArea    
+*                                               

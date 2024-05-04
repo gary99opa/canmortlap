@@ -1,0 +1,472 @@
+******************************************************************
+* MORT-BLWP  v1.00.9110.02  BLWP file for Amortization           *
+******************************************************************
+*                                                                *
+* Source Published: 05/04/2024 garyopa.com via ti99.atariage.com *
+*                                                                *
+* Copyrighted 1992 by O.P.A and 9T9 Assembly Sig and Gary Bowser *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+***************************************      * BLWP @DSPNUM
+* CONVERT NUMBER TO DISPLAYABLE STRING*      * DATA FPV ADDRESS
+***************************************      * lsb  0=FLOATING / 1=SCIENTIFIC
+DSPNUM DATA FPVWS,DSPNUN      BLWP vectors   * lsb  # DIGITS LEFT  OF .
+DSPNUN MOV  *R14+,R1          Get FPV addr.  * lsb  # DIGITS RIGHT OF .
+       LI   R0,FAC            Point to FAC   * RIGHT SCREEN DISPLAY ADDR.
+       LI   R2,4              8 bytes to move
+DSPNUO MOV  *R1+,*R0+         MOVE FPV TO FAC FOR CONVERSION & ROUNDING
+       DEC  R2                Check if move finished
+       JNE  DSPNUO            Nope, so move another byte
+       CLR  @FAC+10           Clear any errors flag (just in case)
+       MOVB @1(R14),@FAC+11   Pass the 0 if FLOATING or 1 if SCIENTFIC
+       MOVB @3(R14),@FAC+12   Pass the # DIGITS LEFT of .
+       MOVB @5(R14),@FAC+13   Pass the # DIGITS RIGHT of .
+       AI   R14,6             Add 6 to skip over used 6 passed bytes
+       BLWP @GPLLNK           CONVERT THE FPV VALUE TO ASCII-STRING
+       DATA CNS               GPL table value for CNS program
+       MOV  *R14+,R0          Get the right screen display address
+       MOVB @FAC+11,R3        Get offset location of string in CPU PAD
+       SRL  R3,8              Make it a word
+       AI   R3,>8300          Calc correct PAD address from offset
+       MOVB @FAC+12,R2        Get length of the converted ASCII-STRING
+       SRL  R2,8              Make it a word
+       A    R2,R3             Point to the byte after the last byte
+       DEC  R3                Move back one to point to the last byte
+       MOV  R3,R4             Save R4 for moving of string
+       MOV  R2,R5             Save R2 for moving of string
+       CLR  R6                Clear decimal correct counter
+       CLR  R1                Clear R1 for word compar below
+DSPNUY MOVB *R3,R1            Right fetch a byte of the string
+       DEC  R3                *
+       CI   R1,'.'*256        Check if decimal point
+       JEQ  DSPNUZ            Yep, so add ending zeros (if any)
+       INC  R6                Add 1 to byte check counter
+       CI   R6,3              Check if too many bytes checked
+       JEQ  DSPNUZ            Yep, so add ending zeros (if any)
+       DEC  R2                check if finished
+       JNE  DSPNUY            nope, so check another byte
+       LI   R6,3              if less $100 even dollars make counter THREE
+* R6 = 3 then "." & two zeros to be added
+*    = 2 then don't add anything
+*    = 1 then just  one zero  to be added
+* R6 = 0 then just  two zeros to be added
+DSPNUZ CI   R6,2              Check if counter = 2
+       JEQ  DSPNUP            if so, don't add anything
+       MOV  R6,R6             Check if counter = 0
+       JNE  DSPNUQ            nope, so do either 3 or 1
+       LI   R6,2              yep, so switch it to a  2
+DSPNUQ LI   R1,PADSTR+3       Point to after last byte in "padding string"
+       S    R6,R1             Point to the starting position to read from
+       S    R6,R0             Point to the screen position to write to
+       INC  R0                Add 1 to correct screen position after sub
+       MOV  R6,R2             Counter becomes length of string to write
+       BLWP @VMBW             Write the "padding string" to the screen
+       DEC  R0                Correct screen addr. to fpv display start
+DSPNUP MOVB *R4,R1            Right fetch a byte of the string
+       DEC  R4                *
+       BLWP @VSBW             Write a byte to the screen
+       DEC  R0                Move back one screen position
+       DEC  R5                Check if finished
+       JNE  DSPNUP            Nope, so write some more
+DSPNRT RTWP                   RETURN TO THE CALLING PROGRAM
+ 
+********************************    BLWP @ ROUND
+* round to two decimal places  *    DATA addr. of input fpv
+********************************         addr. of output rounded fpv.
+RONDWS BSS  32
+RTEMP  DATA >0000,>0000,>0000,>0000
+PADSTR TEXT '.00'               Padding string used by DSPNUM!!!
+       EVEN
+ 
+ROUND  DATA RONDWS,ROUND0
+ROUND0 MOV  *R14+,@ROUND1
+       MOV  *R14+,@ROUND2
+       BLWP @MATH               add .005 to number
+ROUND1 DATA 0,FPV009,FADD,RTEMP
+       BLWP @MATH               multiply by 100
+       DATA RTEMP,FPV100,FMUL,RTEMP
+       BLWP @MATH               integer number
+       DATA 0,RTEMP,FINT,RTEMP
+       BLWP @MATH               divide by 100
+       DATA RTEMP,FPV100,FDIV
+ROUND2 DATA 0
+       RTWP
+ 
+**************************************** BLWP @MATH
+* UNIVERSAL FLOATING POINT MATH        * DATA LEFT/ADDR
+*                                      *      RIGHT/ADDR
+****************************************      TYPE OF MATH
+FADD   EQU  >0600             XML             ANSWER/ADDR
+FSUB   EQU  >0700             XML
+FMUL   EQU  >0800             XML
+FDIV   EQU  >0900             XML
+CFI    EQU  >1200             XML
+FEXP   EQU  >0024             GPL
+FINT   EQU  >0022             GPL
+CNS    EQU  >0014             GPL
+ 
+VSPTR  EQU  >836E             Points to FPV VDP stack pointer in CPU RAM
+VDPSTK DATA >0600             A good free area for roll-out FPV calcs
+ 
+MATH   DATA FPVWS,MATH0       BLWP entry vectors
+MATH0  MOV  @VDPSTK,@VSPTR    Reset FPV VDP stack pointer
+       MOV  *R14+,R1          move left to argument
+       LI   R0,ARG            *
+       LI   R2,4              *
+MATH1  MOV  *R1+,*R0+         *
+       DEC  R2                *
+       JNE  MATH1             *
+       MOV  *R14+,R1          move right to fac
+       LI   R0,FAC            *
+       LI   R2,4              *
+MATH2  MOV  *R1+,*R0+         *
+       DEC  R2                *
+       JNE  MATH2             *
+       MOV  *R14+,R0          GET TYPE OF OPERATION
+       CB   R0,@ZERO          If MSByte is ZERO then GPL
+       JEQ  MATH5                               else XML
+       MOV  R0,@MATH3         Do a XML math
+       BLWP @XMLLNK           *
+MATH3  DATA 0                 *
+       JMP  MATH6             *
+MATH5  MOV  R0,@MATH7         Do a GPL math
+       MOV  @VSPTR,R0
+       LI   R1,ARG
+       LI   R2,8
+       BLWP @VMBW
+       BLWP @GPLLNK           *
+MATH7  DATA 0                 *
+MATH6  MOV  *R14+,R1          move fac to answer
+       LI   R0,FAC            *
+       LI   R2,4              *
+MATH4  MOV  *R0+,*R1+         *
+       DEC  R2                *
+       JNE  MATH4             *
+       RTWP                   RETURN TO CALLING PROGRAM
+ 
+**************************************** BLWP @GETFPV
+* Routine to CONVERT ascii string to   * DATA SCREEN Adr,MAX Length
+* Floating point number                * DATA Adr of min val
+**************************************** DATA Adr of max val,Adr of FPV buf
+FCOMP  EQU  >0A00             XML
+CSN    EQU  >1000             XML
+FAC    EQU  >834A             Address,convert ASCII to floating piont
+ARG    EQU  >835C
+EQBIT  DATA >2000
+GTBIT  DATA >4000
+FPVWS  BSS  32                Work space
+GETFPV DATA FPVWS,GETFPW
+GETFPW MOV  *R14+,@GETKB      Fetch ending screen address
+       MOV  *R14+,@GETKB+2    Fetch max. length of input
+       MOV  *R14+,@GETFPU+2   Fetch BACK return address
+GETFPX BLWP @NUMCUR
+GETKB  DATA 0,0,GETFPU        Screen Address, Max length, Back return addr.
+       MOV  R0,@FAC+12        Move starting screen address to FAC+12
+       BLWP @XMLLNK
+       DATA CSN
+       MOV  *R14,R0
+       BL   @COMFPV
+       MOVB @STATUS,R0
+       COC  @GTBIT,R0
+       JEQ  GETFPX
+       MOV  @2(R14),R0
+       BL   @COMFPV
+       MOVB @STATUS,R0
+       COC  @EQBIT,R0
+       JEQ  GETFPZ
+       COC  @GTBIT,R0
+       JNE  GETFPX
+GETFPZ AI   R14,4
+       MOV  *R14+,R0
+       LI   R1,FAC
+       LI   R2,4
+GETFPY MOV  *R1+,*R0+
+       DEC  R2
+       JNE  GETFPY
+       RTWP                   RETURN TO CALLING PROGRAM
+GETFPU LI   R14,>0000         Load in BACK return address
+       RTWP                   RETURN TO NEW PROGRAM LOCATION
+*
+* The following code is accessed by two different ways
+*
+* 1:   BL   @COMP
+*      DATA compare FPV 1 address,compare FPV 2 address
+*
+*      Using access number one, two address of FPV values
+*      are passed, returned in STATUS byte is different
+*      bits set, depending on the result of the compare
+*      example status checking as shown:
+*
+*      MOVB @STATUS,R0
+*      COC  @GTBIT,R0        (Checks greater bit)
+*      JEQ  _______
+*      COC  @EQBIT,R0        (Checks equal bit)
+*      JEQ  ______
+*
+*      Since the above code is a BL instead of a BLWP
+*      care must be taken as workspace regs. R0,R1,R2 are
+*      all destoryed.
+*
+* 2:   BL   @COMFPV
+*
+*      Access number two, is used internally by the BLWP
+*      "GETFPV" code and should not be used by outside
+*      programs.
+*
+COMP   MOV  *R11+,R0
+       LI   R1,FAC
+       LI   R2,4
+COMFPU MOV  *R0+,*R1+
+       DEC  R2
+       JNE  COMFPU
+       MOV  *R11+,R0
+COMFPV LI   R1,ARG
+       LI   R2,4
+COMFPW MOV  *R0+,*R1+
+       DEC  R2
+       JNE  COMFPW
+       BLWP @XMLLNK
+       DATA FCOMP
+       RT
+ 
+************************************ Data Passed= Screen Address
+* NUMERIC CURSOR routine 9t9 SIG   *        String Length
+************************************        Back return address
+TIMER  EQU  >8379
+CURDEL BYTE 25
+DEC30  BYTE 30
+NUMBUF BSS  16                set buffer to 16 to move string
+CURWS  BSS  32                cursor workspace 32
+NUMCUR DATA CURWS,NUMCUS      workspance and start address
+NUMCUS MOV  *R14+,R5          screen address (data passed)
+       MOV  *R14+,R7          string length  (data passed)
+       MOV  *R14+,@NUMBCK+2   fetch BACK return address
+       SETO R6                set first flag to -1
+NUMCUT MOV  R5,R8             move screen position to r8
+       A    R7,R8             add length to r8
+       DEC  R8                -1 from length
+       MOV  R8,R0
+       LI   R1,30
+       BLWP @VSBR
+NUMDLY CLR  @TIMER
+NUMDLZ LIMI 0
+       BLWP @KSCAN
+       LIMI 2
+       MOVB @STATUS,R0
+       JNE  NUMDLW
+       CB   @TIMER,@CURDEL
+       JLE  NUMDLZ
+       LIMI 0
+       MOV  R8,R0
+       SWPB R1
+       BLWP @VSBW
+       JMP  NUMDLY
+ 
+NUMBCK LI   R14,>0000         Load in passed BACK return address
+       RTWP                   RETURN TO THE NEW PROGRAM LOCATION
+ 
+NUMDLW LIMI 0
+       CB   R1,@DEC30
+       JNE  NUMDLX
+       SWPB R1
+NUMDLX MOV  R8,R0
+       BLWP @VSBW
+NUMCUV MOVB @KEYVAL,R0        get key value and put in r0
+       SRL  R0,8              make into word
+       CI   R0,15             check for BACK key
+       JEQ  NUMBCK            *
+       CI   R0,13             check for ENTER key
+       JEQ  NUMENT            *
+       CI   R0,7              FCTN 3  - delete line
+       JEQ  NUMCLR            *
+       CI   R0,3              FCTN 1  - delete char.
+       JEQ  NUMDEL            *
+       CI   R0,48             check input for being in range 0 - 9
+       JL   NUMCUT            *
+       CI   R0,57             *
+       JH   NUMCUT            *
+       MOV  R6,R6             test first flag - compare to zero
+       JEQ  NUMCUU            *
+       BL   @NUMBLK           branch link to num blank
+       JMP  NUMCUV
+NUMCUU MOV  R5,R0             move r5 to r0
+       MOV  R7,R2
+       AI   R2,-4             subtract 4 from length
+       JEQ  NUMCUW            if only 3 places skip first move
+       INC  R0                increment r0 (start first position)
+       LI   R1,NUMBUF         put r1 in buffer NUMBUF
+       BLWP @VMBR
+       DEC  R0
+       BLWP @VMBW
+NUMCUW A    R7,R0             add length to r0
+       DECT R0                point to second decimal
+       BLWP @VSBR             read
+       DECT R0                move over decimal
+       BLWP @VSBW
+       AI   R0,3              at last decimal place
+       BLWP @VSBR
+       DEC  R0
+       BLWP @VSBW
+       INC  R0
+       MOVB @KEYVAL,R1
+       BLWP @VSBW
+       JMP  NUMCUT           back to numcut for another keypress
+ 
+* when ENTER add default zeros and pass starting string address
+ 
+NUMENT MOV  R5,R0            get screen address
+       A    R7,R0
+       DECT R0
+       BLWP @VSBR
+       CB   R1,@SPACE
+       JNE  NUMENW
+       LI   R1,'00'
+       BLWP @VSBW
+NUMENW DECT R0
+       BLWP @VSBR
+       CB   R1,@SPACE
+       JNE  NUMENX
+       LI   R1,'00'
+       BLWP @VSBW
+NUMENX MOV  R5,R0             get screen address
+NUMENU BLWP @VSBR
+       CB   R1,@SPACE        look for start of string (first non space char.)
+       JNE  NUMENV           *
+       INC  R0               *
+       JMP  NUMENU           *
+NUMENV MOV  R0,*R13          pass screen address to old r0
+       RTWP
+* num clear and num blank subroutine
+ 
+NUMCLR BL   @NUMBLK           branch & link to numblk routine
+       B    @NUMCUT
+NUMBLK MOV  R5,R0             screen address
+       LI   R1,' .'           r1 place space and period
+       MOV  R7,R4             r4 max. length
+NUMBLL BLWP @VSBW             write a space
+       CI   R4,3              check for period area
+       JNE  NUMBLM            jump if not period
+       SWPB R1                put period in MSB
+       BLWP @VSBW             write a period
+       SWPB R1                put space in MSB
+NUMBLM INC  R0                point next screen position
+       DEC  R4                dec length counter
+       JNE  NUMBLL            if not zero do again
+       CLR  R6                clear flag
+       RT                     RETURN to calling program
+ 
+* num delete routine
+ 
+NUMDEL MOV R5,R0              move screen address in r0
+       A   R7,R0              add length to r0 - point to end
+       DECT R0                subtract 2
+       BLWP @VSBR             read a character
+       INC  R0                add 1
+       BLWP @VSBW             write
+       AI   R0,-3             move back 3 spaces
+       BLWP @VSBR
+       INCT R0                move forward 2 spaces
+       BLWP @VSBW
+       MOV  R5,R0             move screen address in r0
+       MOV  R7,R2             move length into r2
+       AI   R2,-4             -4 from length
+       JEQ  NUMDEM            if only 3 places skip third move
+       LI   R1,NUMBUF         move r1 into buffer
+       BLWP @VMBR             read into buffer
+       INC  R0                inc. screen address
+       BLWP @VMBW
+NUMDEM MOV  R5,R0
+       LI   R1,'  '           load in two spaces
+       BLWP @VSBW
+       B    @NUMCUT
+ 
+******************************
+* Univ. DSR maker by 9T9 sig *
+******************************
+* FILE EQUATES
+FIX    EQU  >0000
+VAR    EQU  >0010
+DIS    EQU  >0000
+INT    EQU  >0008
+UPD    EQU  >0000
+OUT    EQU  >0002
+INP    EQU  >0004
+APP    EQU  >0006
+SEQ    EQU  >0000
+REL    EQU  >0001
+ 
+* MODE EQUATES
+OPEN   EQU  >0000
+CLOSE  EQU  >0100
+READ   EQU  >0200
+WRITE  EQU  >0300
+RESTOR EQU  >0400
+LOAD   EQU  >0500
+SAVE   EQU  >0600
+DELET  EQU  >0700
+SCRTCH EQU  >0800
+FILSTA EQU  >0900
+ 
+* VDP EQUATES
+DSRPAB EQU  >1000
+VDPBUF EQU  >1100
+ 
+* DATA
+RECLEN DATA >0000             length of record read/write for var. files
+RECNUM DATA >0000             record number for accessing fixed files
+DSR2WS BSS  32                workspace for below blwp routine
+ 
+*************************************************************************
+* DSR CODE          called - BLWP @DSR                                  *
+* parameters: mode type + (1 or more file types) -> OPEN+DIS+FIX+INP ,  *
+* record length, vdp buffer address, cpu address of file name,          *
+* where to go for error, where to go if EOF                             *
+*                                                                       *
+* filename format: first line a data containing length                  *
+*                  second line a text containing text                   *
+*                  e.g. PIONAM DATA 3                                   *
+*                              TEXT 'PIO'                               *
+*                                                                       *
+* make sure to specify record length when writing variable records      *
+* in relative files, record number is auto increment after read/write   *
+*************************************************************************
+DSR    DATA DSR2WS,DSR0       specify workspace, where to go
+DSR0   LI   R0,DSRPAB         load r0 with vdp addr. of real PAB
+       MOVB *R14+,R1          fetch byte 0 - op code
+       BLWP @VSBW             write byte 0 to vdp
+       MOVB *R14+,@VDPWD      write byte 1 to vdp - filetype
+       MOV  *R14+,R1          fetch record length
+       MOVB *R14+,@VDPWD      write byte 2/3 (vdp buffer address)
+       MOVB *R14+,@VDPWD      write byte 1 to vdp - filetype
+       SLA  R1,8              put record length in MSB
+       MOVB R1,@VDPWD         write byte 4 (record length)
+       MOVB @RECLEN+1,@VDPWD  write byte 5 (character count)
+       MOVB @RECNUM,@VDPWD    write byte 6/7 (record number)
+       MOVB @RECNUM+1,@VDPWD  *
+       LI   R0,DSRPAB+8       point to byte 8 of pab
+       MOV  *R14+,R1          fetch cpu address of filename
+       MOV  *R1,R2            get length of filename from filename
+       INCT R2                add 2 to make sure bytes 8/9 are written
+       BLWP @VMBW             write bytes 8/9 and filename
+       INC  R0                make r0 point to length byte in pab
+       MOV  R0,@POINTR        tell dsr where pab is
+       BLWP @DSRLNK           EXECUTE DSR
+       DATA 8                 (high level dsr)
+       JNE  DSR02             if no errors, jump to part 2
+       MOV  R0,*R13           PASS ERROR CODE BACK TO R0 OF CALLERS WS
+       MOV  *R14+,R11         fetch return addr. when error
+       CI   R1,5              check to see if EOF error
+       JNE  DSR01             nope, skip fetch of other return addr.
+       MOV  *R14+,R11         EOF, fetch return addr. for EOF
+DSR01  MOV  R11,R14           load new return addr. in r14
+       RTWP                   branch to selected routine
+DSR02  AI   R14,4             NO ERRORS, skip of over error return addr.'s
+       LI   R0,DSRPAB+5       point to char. count in pab
+       BLWP @VSBR             read into MSB of r1
+       MOVB R1,@RECLEN+1      pass back to record length buffer
+       MOVB @VDPRD,@RECNUM    put new record number into save buffer
+       MOVB @VDPRD,@RECNUM+1  *
+       RTWP                   DONE, RETURN TO CALLING PROG.

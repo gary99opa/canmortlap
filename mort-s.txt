@@ -1,0 +1,43 @@
+******************************************************************
+* MORT-S     v1.00.9201.15  First Main Assemble Source File      *
+******************************************************************
+*                                                                *
+* Source Published: 05/04/2024 garyopa.com via ti99.atariage.com *
+*                                                                *
+* Copyrighted 1992 by O.P.A and 9T9 Assembly Sig and Gary Bowser *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+       TITL 'Canada Mortgage and Loan Amortization Program'
+       DEF  SFIRST,START,SLAST
+       IDT  'MORT1.00'
+       AORG >A000
+*
+* Warning, program should be less than 8080bytes due to 16kb buffers at end!
+*
+SFIRST COPY "DSK6.MORT-MAIN"
+       COPY "DSK6.MORT-BLWP"
+       COPY "DSK6.MORT-UTIL"
+*
+* Warning, if program is bigger than 8kb than data/text to be moved to >2000
+*
+*      AORG >2000
+       COPY "DSK6.MORT-DATA"
+       COPY "DSK6.MORT-TEXT"
+       EVEN
+*
+* End the program image before the empty buffers/workspace area below
+*
+SLAST  EQU  $
+*
+* Note the buffer space is 16kb, so above program is limited in size!
+*
+WS     BSS  32                Workspace for main program
+MOVBUF BSS  80                Buffer for moving screen lines
+TRMTBL EQU  $                 16K divided by 24b per record : max. 682
+*
+* That's All Folks!
+*
+       END

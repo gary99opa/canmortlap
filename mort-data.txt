@@ -1,0 +1,120 @@
+******************************************************************
+* MORT-DATA  v1.00.9201.15  Data file for Amortization           *
+******************************************************************
+*                                                                *
+* Source Published: 05/04/2024 garyopa.com via ti99.atariage.com *
+*                                                                *
+* Copyrighted 1992 by O.P.A and 9T9 Assembly Sig and Gary Bowser *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+CURPAT DATA >0000,>0000,>0000,>FFFF
+ 
+TRMNUM DATA 0                 Stores current term number
+TYP1$2 DATA 0                 >0000 if option 1 or >FFFF if option 2
+PAYTYP DATA 2                 Type of payments
+ 
+MKHONK DATA HONK,-1  (Dummy WRTSCR for HONK sound)
+ 
+ONESCR DATA 0,0,INPUT1,-1
+TWOSCR DATA 0,0,INPUT2,-1
+ 
+INPSCR DATA BEEP,160,INPUTA,-1
+NEWSCR DATA 0,280,INPUTC,400,INPUTZ,440,INPUTY,-1
+MINPAY DATA BEEP,480,MINTXT,-1
+DISTRM DATA 0,640,INPUTB,-1
+TRMDIS DATA 0,480,TRMLNA,-1
+NUMDIS DATA 0,560,TRMLNB,920,TRMLNC,-1
+ 
+TYPSCR DATA 0,360,INTYPE,-1
+TBLSCR DATA 0,400,TBLLIN,440,TBLLN2,880,CMDLIN,-1
+ 
+TBLASK DATA 0,400,INPUTZ,880,ASK01,-1
+PRNSCR DATA 0,920,PRNLN1,-1
+PRNCMD DATA 0,920,PRNLN2,-1
+PRNASK DATA BEEP,920,PRNLN3,-1
+PRNERR DATA HONK,920,PRNLN4,-1
+TOOMCH DATA HONK,920,MCHTXT,-1
+ 
+TITSCR DATA BEEP,0,TITLE1,200,TITLE2,280,TITLE3,400,TITLE4
+       DATA 680,TITLE5,760,TITLE6,920,TITLE7,-1
+ 
+SCRTBL DATA 0,15,13,12        Screen value offset table for term display
+*                             the three values must add up to 40.
+SIX    DATA 6
+ 
+MAXCPU DATA >4106,>5200,>0000,>0000          Max. # of records in CPU RAM
+NUMPAY DATA >0000,>0000,>0000,>0000          TBL*AMT = NUMBER OF PAYMENTS
+NUMITG DATA >0000,>0000,>0000,>0000          INTEGER VERSION OF ABVE LINE
+ 
+INTTBL DATA FPV26
+       DATA FPV13
+       DATA FPV6
+       DATA FPV3
+       DATA FPV2
+       DATA FPV1
+       DATA FPV$5
+ 
+MTHTBL DATA NUMTBL
+       DATA FPV26
+       DATA FPV12
+       DATA FPV6
+       DATA FPV4
+       DATA FPV2
+       DATA FPV1
+ 
+NUMTBL DATA >4034,>0000,>0000,>0000          52
+FPV26  DATA >401A,>0000,>0000,>0000          26
+FPV12  DATA >400C,>0000,>0000,>0000          12
+FPV6   DATA >4006,>0000,>0000,>0000          6
+FPV4   DATA >4004,>0000,>0000,>0000          4
+FPV2   DATA >4002,>0000,>0000,>0000          2
+FPV1   DATA >4001,>0000,>0000,>0000          1
+ 
+FPV3   DATA >4003,>0000,>0000,>0000          3
+FPV13  DATA >400D,>0000,>0000,>0000          13
+FPV$5  DATA >3F32,>0000,>0000,>0000          .5
+ 
+PRNMIN DATA >4001,>0000,>0000,>0000          1.00
+INTMIN DATA >4001,>0000,>0000,>0000          1.00
+AMTMIN DATA >4001,>0000,>0000,>0000          1.00
+TRMMIN DATA >3F19,>0000,>0000,>0000          0.25
+ 
+PRNMAX DATA >440A,>0000,>0000,>0000          1,000,000,000.00
+INTMAX DATA >4063,>6300,>0000,>0000          99.99
+AMTMAX DATA >4063,>0000,>0000,>0000          99
+TRMMAX DATA >4063,>0000,>0000,>0000          99
+ 
+PRNFPV DATA >0000,>0000,>0000,>0000         PRINICAL
+INTFPV DATA >0000,>0000,>0000,>0000         INTEREST
+AMTFPV DATA >0000,>0000,>0000,>0000         AMORTIZATION
+TRMFPV DATA >0000,>0000,>0000,>0000         TERM
+ 
+FPV1$6 DATA >3F10,>4242,>4242,>4243         1/6
+FPV200 DATA >4102,>0000,>0000,>0000         200
+FPV009 DATA >3E32,>0000,>0000,>0000         .005
+FPV100 DATA >4101,>0000,>0000,>0000         100
+FPV0   DATA >0000,>0000,>0000,>0000         0
+ 
+ATEMP  DATA >0000,>0000,>0000,>0000         TEMP STORAGE
+BTEMP  DATA >0000,>0000,>0000,>0000         TEMP STORAGE
+ 
+MTHINT DATA >0000,>0000,>0000,>0000         =((1+INT/200)^(1/6))-1
+MTHPAY DATA >0000,>0000,>0000,>0000         PRN*(MTH/(1-(1/((MTH+1)^AMT))))+.009
+ECHPAY DATA >0000,>0000,>0000,>0000         MTHPAY / or * by a factor
+ECHINT DATA >0000,>0000,>0000,>0000         MTHINT / or * by a factor
+ 
+INTPD  DATA >0000,>0000,>0000,>0000     interest paid data table
+PRNPD  DATA >0000,>0000,>0000,>0000     principle paid data table
+BALFPV DATA >0000,>0000,>0000,>0000     balance principle data table
+INTTOT DATA >0000,>0000,>0000,>0000     interest total paid data table
+PRNTOT DATA >0000,>0000,>0000,>0000     principle total paid data table
+ 
+PRNLEN DATA 80                Length of printer string per each DSR call
+PIONAM DATA 3                 Printer device-name for "print output"
+       TEXT 'PIO                 '
+THREE  BYTE 3
+ZERO   BYTE 0
+       EVEN

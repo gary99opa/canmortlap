@@ -1,0 +1,608 @@
+******************************************************************
+* MORT-MAIN  v1.00.9201.15  Main file for Amortization           *
+******************************************************************
+*                                                                *
+* Source Published: 05/04/2024 garyopa.com via ti99.atariage.com *
+*                                                                *
+* Copyrighted 1992 by O.P.A and 9T9 Assembly Sig and Gary Bowser *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+START  LIMI 0                 Turn off all interrupts
+       LWPI WS                Load our workspace
+       MOVB @THREE,@KEYADR    Make keyboard upper only
+       LI   R0,>01F0          Switch to TEXT (40) mode
+       BLWP @VWTR             *
+       SWPB R0                *
+       MOVB R0,@VDPR1         *
+       LI   R0,>07F4          White TEXT on Blue background
+       BLWP @VWTR             *
+       LI   R0,30*8+>800      Starting pos for Character 30
+       LI   R1,CURPAT         Point to Cursor pattern data
+       LI   R2,8
+       BLWP @VMBW             Write the Cursor character to VDP
+PSTART BLWP @CLEAR            Clear whole screen
+       DATA 0,960             *
+       BLWP @WRTSCR           Display Title Screen
+       DATA TITSCR            *
+SKEY   BL   @SCAN             Wait for key of one or two
+       MOVB @KEYVAL,R0        Get key press and make it a word
+       SRL  R0,8
+       CI   R0,15             Branch to PEXIT if BACK was pressed
+       JEQ  PEXIT
+       CI   R0,49             Branch to SONE if ONE was pressed
+       JEQ  SONE
+       CI   R0,50             Branch to STWO if TWO was pressed
+       JEQ  STWO
+       BLWP @WRTSCR           HONK because not ONE or TWO was pressed
+       DATA MKHONK
+       JMP  SKEY
+PEXIT  BLWP @0                EXIT TO THE TI TITLE SCREEN
+*
+* STWO (Simple Interest Loan)
+*
+STWO   BLWP @CLEAR            Clear whole screen
+       DATA 0,960             * start at 0 for 960 bytes
+       BLWP @WRTSCR           Display title block for option #2
+       DATA TWOSCR
+       SETO @TYP1$2           Set selected flag to >FFFF
+       JMP  SBOTH             Jump to common input part
+*
+* SONE (Canada Mortgage)
+*
+SONE   BLWP @CLEAR            Clear whole screen
+       DATA 0,960             * start at 0 for 960 bytes
+       BLWP @WRTSCR           Display title block for option #1
+       DATA ONESCR
+       CLR  @TYP1$2           Set selected flag to >0000
+*
+* SBOTH (both main options)
+*
+SBOTH  BLWP @WRTSCR           Display common input screen
+       DATA INPSCR
+RECALC CLR  @TRMNUM           Reset to term number zero
+       BLWP @CLEAR
+       DATA 280,680           * start at 400 for 560 bytes
+       BLWP @WRTSCR
+       DATA NEWSCR
+       BLWP @GETFPV
+       DATA 184,13,PSTART,PRNMIN,PRNMAX,PRNFPV
+       BLWP @GETFPV
+       DATA 232,5,RECALC,INTMIN,INTMAX,INTFPV
+       BLWP @GETFPV
+       DATA 272,5,RECALC,AMTMIN,AMTMAX,AMTFPV
+ 
+       BLWP @WRTSCR
+       DATA TYPSCR
+TYPNXT MOV  @PAYTYP,R1
+       SLA  R1,4              r1,(2^4=16)
+       AI   R1,PAYTBL         add paytbl to r1
+       LI   R0,344            screen position
+       LI   R2,16             length of table is 16
+       BLWP @VMBW             display table to screen
+       LI   R0,441            screen position
+       LI   R2,11             length of table is 16
+       BLWP @VMBW             display table to screen
+*
+* CALC INTEREST FACTOR
+*
+       BLWP @MATH             A=N/200
+       DATA INTFPV,FPV200,FDIV,ATEMP
+       BLWP @MATH             A=A+1
+       DATA ATEMP,FPV1,FADD,ATEMP
+       MOV  @PAYTYP,R0         *move index from paytyp to r0
+       SLA  R0,1               *times by 2 for 2byte table entry
+       AI   R0,INTTBL          add address to offset in table
+       MOV  *R0+,@INTDTA+2     get value from table
+       BLWP @MATH              store in math routine
+INTDTA DATA FPV1,0,FDIV,BTEMP B=(1/table)
+       BLWP @MATH             A=A^B
+       DATA ATEMP,BTEMP,FEXP,ATEMP
+       BLWP @MATH             Q=A-1
+       DATA ATEMP,FPV1,FSUB,ECHINT
+*
+* CALC PAYMENT
+*
+       BLWP @MATH             A=Q+1
+       DATA ECHINT,FPV1,FADD,ATEMP
+       MOV  @PAYTYP,R0         *move index from paytyp to r0
+       SLA  R0,1               *times by 2 for 2byte table entry
+       AI   R0,MTHTBL          add address to offset in table
+       MOV  *R0+,@MTHDTA+2     get value from table
+       BLWP @MATH             B=Y*table
+MTHDTA DATA AMTFPV,0,FMUL,BTEMP
+       BLWP @MATH             A=A^B
+       DATA ATEMP,BTEMP,FEXP,ATEMP
+       BLWP @MATH             A=1/A
+       DATA FPV1,ATEMP,FDIV,ATEMP
+       BLWP @MATH             A=1-A
+       DATA FPV1,ATEMP,FSUB,ATEMP
+       BLWP @MATH             A=Q/A
+       DATA ECHINT,ATEMP,FDIV,ATEMP
+       BLWP @MATH             A=K*A
+       DATA PRNFPV,ATEMP,FMUL,ATEMP
+       BLWP @ROUND            ROUND  A
+       DATA ATEMP,ECHPAY
+*
+* ASK / CHECK for new payment amount
+*
+       BLWP @CLEAR            clear screen
+       DATA 464,14            * starting at 584 for 14 bytes
+       BLWP @DSPNUM           display number routine
+       DATA ECHPAY,0,13,2,476
+ 
+TYPGET BL   @SCAN             branch link to scan for input
+       MOVB @KEYVAL,R0        move keyvalue into register 0
+       SRL  R0,8              make a word
+       CI   R0,13             compare r0 to enter key
+       JEQ  GOTTYP            if equal jump to gottyp
+       CI   R0,11             compare to up key (E)
+       JEQ  TYPUP             if equal jump to typup
+       CI   R0,10             compare to down key (X)
+       JNE  TYPGET            if equal jump to typget
+       INC  @PAYTYP           increment paytype
+       C    @PAYTYP,@SIX      compare paytype to six
+       JLE  TYPAGN            if not equal jump to typnxt
+       CLR  @PAYTYP            set paytyp to zero
+       JMP  TYPAGN            jump to typnxt
+TYPUP  DEC  @PAYTYP           decrement by 1 the paytyp
+       JGT  TYPAGN            jump if greater than zero
+       JEQ  TYPAGN            jump if equal to zero
+       MOV  @SIX,@PAYTYP      when below zero reset to six
+TYPAGN B    @TYPNXT
+*
+* DISPLAY TERM END VALUES
+*
+GOTTYP BLWP @CLEAR            clear screen
+       DATA 360,40            * starting at 400 for 40 bytes
+       BL   @COMP             Compare the payment to the principle
+       DATA ECHPAY,PRNFPV     *
+       MOVB @STATUS,R0        Get the compare result status
+       COC  @GTBIT,R0         Check if principle greater payment
+       JEQ  GOTTYO            if yes, then allow payment amount!
+       BLWP @WRTSCR           If no, then display "too much" line
+       DATA TOOMCH            *
+       BL   @SCAN             Wait for a key press
+       B    @RECALC           Got key, go back to first screen
+GOTTYO BLWP @MATH             calculate interest amount for first payment
+       DATA ECHINT,PRNFPV,FMUL,ATEMP
+       BLWP @ROUND            round it off
+       DATA ATEMP,ATEMP
+       BLWP @MATH             make sure payment greater than "interest"
+       DATA ATEMP,INTMIN,FADD,ATEMP
+       BLWP @WRTSCR           display min. payment amount
+       DATA MINPAY
+       BLWP @DSPNUM           display number routine
+       DATA ATEMP,0,13,2,516
+       BLWP @GETFPV           ask for a change in the payment amount
+       DATA 464,13,RECALC,ATEMP,PRNFPV,ECHPAY
+       LI   R0,INTTOT         clear interest total and principle total
+       LI   R2,8              * 8 words = 2 floating point values
+BLDTBP CLR  *R0+              clear a word
+       DEC  R2                check if finished
+       JNE  BLDTBP            if not clear another word
+*
+* Calc max. / Get amount of years to build table on
+*
+       MOV  @PAYTYP,R1
+       SLA  R1,3
+       AI   R1,NUMTBL
+       MOV  R1,@GETTRM+2
+       MOV  R1,@GETTRN
+       BLWP @MATH
+GETTRM DATA MAXCPU,>0000,FDIV,ATEMP
+       BLWP @WRTSCR
+       DATA TRMDIS
+       BLWP @ROUND
+       DATA ATEMP,ATEMP
+       BLWP @DSPNUM
+       DATA ATEMP,0,4,2,556
+       BLWP @GETFPV
+       DATA 510,7,RECALC,FPV1,ATEMP,TRMFPV
+       BLWP @CLEAR
+       DATA 520,40
+       BLWP @MATH
+GETTRN DATA >0000,TRMFPV,FMUL,NUMPAY
+       BLWP @WRTSCR
+       DATA NUMDIS
+       BLWP @MATH
+       DATA 0,NUMPAY,CFI,NUMITG
+       MOV  @NUMITG,R6
+       BLWP @NUMASC
+       DATA MOVBUF,2
+       LI   R0,591
+       LI   R1,MOVBUF
+       LI   R2,3
+       BLWP @VMBW
+*
+* BUILD TABLE UP TO TERM END
+*
+       LI   R0,PRNFPV         point to principle value
+       LI   R1,BALFPV         point to balance value
+       LI   R2,4              4 words = length of floating point value
+BLDTBM MOV  *R0+,*R1+         move principle value to balance value
+       DEC  R2                check if finished
+       JNE  BLDTBM            if not move another word
+BLDTBN INC  @TRMNUM           New term, add 1 to the term number
+       LI   R10,TRMTBL              start at begin of term table
+       MOV  @NUMITG,R9        put no. of payments in r9
+       BLWP @WRTSCR           display text for term end values
+       DATA DISTRM            *
+BLDTBZ BLWP @MATH                      calculate interest paid
+       DATA ECHINT,BALFPV,FMUL,INTPD
+       BLWP @ROUND                     round off interest paid
+       DATA INTPD,INTPD
+       BLWP @MATH                      calculate principle paid
+       DATA ECHPAY,INTPD,FSUB,PRNPD
+       BLWP @MATH                      calculate principle balance
+       DATA BALFPV,PRNPD,FSUB,BALFPV
+       BL   @COMP          compare last balance to current principle paid
+       DATA PRNPD,BALFPV
+       MOVB @STATUS,R0     get compare result status
+       COC  @GTBIT,R0      check if balance greater than "principle paid"
+       JEQ  BLDTBY         yep, so don't do any shorting of term table!
+       BLWP @MATH          Add last balance to last principle paid
+       DATA PRNPD,BALFPV,FADD,PRNPD
+       BLWP @MATH          Make new end of term table, with ZERO balance
+       DATA BALFPV,BALFPV,FSUB,BALFPV
+       S    R9,@NUMITG     Sub current payment # from old total payments
+       INC  @NUMITG        Calc new amount of the payments
+       LI   R9,1           Tell the table builder program this is the last
+BLDTBY BLWP @MATH                      interest paid total
+       DATA INTTOT,INTPD,FADD,INTTOT
+       BLWP @MATH                      principle paid total
+       DATA PRNTOT,PRNPD,FADD,PRNTOT
+       LI   R0,INTPD       move the first 3 calculate values to table
+       LI   R2,12          * 12 words = 3 floating point values
+BLDTBO MOV  *R0+,*R10+     *
+       DEC  R2             *
+       JNE  BLDTBO         *
+       DEC  R9                check if all payments calculated
+       JNE  BLDTBZ            if not return and do other calc.
+       BLWP @DSPNUM           display principle total
+       DATA PRNTOT,0,10,2,676
+       BLWP @DSPNUM           display interest  total
+       DATA INTTOT,0,10,2,756
+       BLWP @DSPNUM           display principle owing
+       DATA BALFPV,0,10,2,836
+*
+* Ask if to display the table
+*
+PRNTBY BLWP @WRTSCR           write ? to the screen
+       DATA TBLASK            *
+       MOV  @TRMNUM,R6        Fetch the current term number
+       BLWP @NUMASC           Convert it into ASCII into the table header
+       DATA TBLLIN+3,1        header address, length of 2
+ASKTBL BL   @SCAN             wait for key press
+       CLR  R0                clear r0 because keyval is a byte
+       MOVB @KEYVAL,R0        move keyval byte to r0
+       SETO R15               Set flag incase of just a "summary"
+       CI   R0,'P'*256        compare to see if keypress a "P"
+       JEQ  ASKTBM            if so, branch to print "table"
+       CI   R0,'S'*256        compare to see if keypress a "S"
+       JEQ  ASKTBN            if so, branch to print "summary"
+       CI   R0,'D'*256        compare to see if keypress a "D"
+       JEQ  DSPTBL            if so, branch to display table
+       CI   R0,'F'*256        compare to see if keypress a "F"
+       JEQ  FFPRN             if so, branch to form feed of paper
+       CI   R0,' '*256        compare to see if keypress a " "
+       JNE  ASKTBL            if not ask for another keypress
+       B    @RECALC           if  not any of those, branch to beginning
+ASKTBM CLR  R15               Clear flag to whole "table" before branch
+ASKTBN B    @PRNTBL           Re-branch, since can't jump that far
+*
+* Form Feed Paper when F is pressed at options menu
+*
+FFPRN  BLWP @DSR              Open up a DIS/VAR 80 (output) file!
+       DATA OPEN+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+       LI   R0,VDPBUF         Point to the printer buffer
+       LI   R1,12*256         Form feed control character
+       BLWP @VSBW             Send it to the buffer in VDP
+       LI   R2,1              Length of the string to be sent
+       MOV  R2,@RECLEN        Pass it to the below DSR operation
+       BLWP @DSR              write out a "form feed"
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+       BLWP @DSR              close the DIS/VAR 80 file
+       DATA CLOSE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+       JMP  ASKTBL            done with form feed, wait for a key now!
+*
+* DISPLAY TERM TABLE
+*
+DSPTBL LI   R0,440            move payment line up to start at 320
+       LI   R1,MOVBUF         *
+       LI   R2,80             *
+       BLWP @VMBR             *
+       LI   R0,280            *
+       BLWP @VMBW             *
+       BLWP @CLEAR            clear out term end values or last page
+       DATA 440,520           start at 480 for 480 bytes
+       BLWP @WRTSCR           display table header/command lines
+       DATA TBLSCR            *
+       LI   R10,TRMTBL        starting addr. of term table in r10
+       CLR  R6                use r6 as payment pointer number
+DSPOK  BLWP @CLEAR            clear schedule for next page
+       DATA 480,400           start at 480 for 400 bytes
+       LI   R8,494            starting first line of screen addr.
+       LI   R9,10             number of lines to display
+DSPLIN LI   R7,3              number of values to display/line
+       C    R6,@NUMITG        check if out of payments but screen not done
+       JHE  DSPTMR            yep, so don't display any more screen lines!
+       INC  R6                Add 1 to make payment starts at no. "1"
+       BLWP @NUMASC           convert integer to ascii routine
+       DATA MOVBUF,2          buffer add, length of 3
+       MOV  R8,R0             get screen addr. of first fpv
+       AI   R0,-14            point back to beginning of line
+       LI   R1,MOVBUF         point to convert no. buffer
+       LI   R2,3              no. of digits
+       BLWP @VMBW             write to screen
+       DEC  R6                Switch no. back to "computer-use" count
+DSPTMP MOV  R10,@DSPTMO       tell dspnum what value to convert from table
+       MOV  R8,@DSPTMQ        tell dspnum where to put on screen
+       BLWP @DSPNUM           convert and display fpv
+DSPTMO DATA 0,0,10,2          val. address,type,left length,no. of decimals.
+DSPTMQ DATA 0                 screen address
+       AI   R10,8             point to next value in term table
+       MOV  R7,R1             Save R7 for below check
+       SLA  R1,1              mpy either 3,2,1 by 2
+       A    @SCRTBL(R1),R8    add either 11,14,15 to screen address
+       DEC  R7                check if display line done
+       JNE  DSPTMP            if not convert next value
+       INC  R6                increase by 1 the payment display number
+       DEC  R9                check if display done
+       JNE  DSPLIN            if not display next line
+*
+DSPTMR A    R9,R6             make sure R6 points to the bottom line
+       LI   R0,24             length of each line not used on a page
+       MPY  R9,R0             mpy by no. of unused screen lines = R0/R1
+       A    R1,R10            make sure R10 points to the bottom line
+DSPTMZ BLWP @KSCAN            scan for keypress
+       CLR  R0                clear r0 as keyval is a byte
+       MOVB @KEYVAL,R0        put keyval in MSByte
+       CI   R0,'E'*256        check if "E" key is pressed
+       JEQ  DSPUP             if so, go up a page
+       CI   R0,'X'*256        check if "X" key is pressed
+       JEQ  DSPDWN            if so, go down a page
+       CI   R0,13*256         check if enter was pressed
+       JEQ  DSPEXT            if so, exit term display
+       CI   R0,32*256         check if space was pressed
+       JEQ  DSPNXT            if so, display next term
+       JMP  DSPTMZ            no valid key pressed scan again
+DSPUP  CI   R6,10             check if first page
+       JLE  DSPTMZ            if so, don't go up
+       AI   R10,-480          10 lines* 24 bytes=240 (back up a page)
+       AI   R6,-20            back up 10 payments
+       JMP  DSPOK             go back and display new page
+DSPDWN C    R6,@NUMITG        Check if at the last page
+       JHE  DSPTMZ            if so, don't go down
+       JMP  DSPOK             not last page, so advance to next page
+DSPNXT BL   @COMP             Compare the balance to the payment
+       DATA ECHPAY,BALFPV     *
+       MOVB @STATUS,R0        Get the compare result status
+       COC  @GTBIT,R0         Check if balance greater payment
+       JNE  DSPTMZ            if not, don't allow another term table
+       BLWP @CLEAR            clear out the current page
+       DATA 400,560           * start at 400 for 560 screen bytes
+       LI   R0,320            move payment line down to start at 560
+       LI   R1,MOVBUF         *
+       LI   R2,80             *
+       BLWP @VMBR             *
+       LI   R0,560            *
+       BLWP @VMBW             *
+       B    @BLDTBN           Restart term calc for next term table
+DSPEXT B    @RECALC           Restart at the beginning
+*
+* PRINT TERM TABLE
+*
+PRNTBZ B    @PRNTBY           If printname is zero, then goto term menu
+PRNTBL BLWP @CLEAR            Clear out the display or print menu
+       DATA 880,80
+       BLWP @WRTSCR           display printer name
+       DATA PRNASK            *
+       BLWP @KB               branch to kb routine
+       DATA 938,PIONAM+2,>0014 SCREEN address
+       MOV  R0,@PIONAM         *
+       JEQ  PRNTBZ
+       BLWP @WRTSCR           display printing, please wait line!
+       DATA PRNSCR            *
+       BLWP @DSR              Open up a DIS/VAR 80 (output) file!
+       DATA OPEN+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         Point to printer record buffer in VDP
+       LI   R1,HDRLN0         Point to the main header top text line
+       LI   R2,46             Length of the header string to print
+       BLWP @VMBW             Write it out to VDP
+       MOV  R2,@RECLEN        Pass the (67) length to DSR operation!
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       CLR  @RECLEN           Trick to send a blank line (line feed)
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         Point to printer record buffer in VDP
+       LI   R1,HDRLN1         Point to the dummy starting text line
+       LI   R2,67             Length of the header string to print
+       BLWP @VMBW             Write it out to VDP
+       MOV  R2,@RECLEN        Pass the (67) length to DSR operation!
+       BLWP @DSPNUM           Prinicpal value to header string in VDP
+       DATA PRNFPV,0,10,2,VDPBUF+13
+       BLWP @DSPNUM           Interest value to header string in VDP
+       DATA INTFPV,0,2,2,VDPBUF+22
+       BLWP @DSPNUM           Term (years) value to header string in VDP
+       DATA TRMFPV,0,2,2,VDPBUF+34
+       BLWP @DSPNUM           Amort (years) value to header string in VDP
+       DATA AMTFPV,0,2,2,VDPBUF+60
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         Point to printer record buffer in VDP
+       LI   R1,HDRLN2         Point to the dummy starting text line
+       LI   R2,51             Length of the header string to print
+       BLWP @VMBW             Write it out to VDP
+       MOV  R2,@RECLEN        Pass the (54) length to DSR operation!
+       MOV  @NUMITG,R6        Pass the total # of payments to print buff.
+       BLWP @NUMASC           convert integer to ascii routine
+       DATA MOVBUF,2          buffer add, length of 3
+       LI   R1,MOVBUF         point to convert no. buffer
+       LI   R2,3              no. of digits
+       BLWP @VMBW             write to screen
+       MOV  @PAYTYP,R1        Put pay type into the printer header
+       SLA  R1,4              r1,(2^4=16)
+       AI   R1,PAYTBL         add paytbl to r1
+       LI   R0,VDPBUF+7       screen position
+       LI   R2,13             length of table is 13
+       BLWP @VMBW             display table to screen
+       BLWP @DSPNUM           Interest value to header string in VDP
+       DATA ECHPAY,0,10,2,VDPBUF+45
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       CLR  @RECLEN           Trick to send a blank line (line feed)
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R2,40             Length of the next three strings
+       MOV  R2,@RECLEN        Pass the (40) length to DSR operation!
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,640,PIONAM,DSRERR,DSRERR
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,720,PIONAM,DSRERR,DSRERR
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,800,PIONAM,DSRERR,DSRERR
+ 
+       CLR  @RECLEN           Trick to send a blank line (line feed)
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         print position
+       LI   R1,DOTLIN         dotted line
+       LI   R2,65             length of string is 65
+       BLWP @VMBW             write dotted line to VDP buffer
+       MOV  R2,@RECLEN        Pass the (65) length to DSR operation!
+       LI   R0,VDPBUF+65      print position
+       LI   R1,TBLLIN         term number dotted line part
+       LI   R2,5              length of string is 5
+       BLWP @VMBW             write dotted line to VDP buffer
+       A    R2,@RECLEN        Add the (5) length to total print length
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       CLR  @RECLEN           Trick to send a blank line (line feed)
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       MOV  R15,R15           Check if just "summary" or full table!
+       JEQ  PRNTMF            Whole table, so skip over quick exit!
+       B    @PRNTMR           Summary, so quickly exit to the end!
+ 
+PRNTMF LI   R0,VDPBUF         print position
+       LI   R1,TBLLIN         table header
+       LI   R2,40             length of string is 40
+       BLWP @VMBW             write header line to VDP buffer
+       MOV  R2,@RECLEN        Pass the (40) length to DSR operation!
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         print position
+       LI   R1,DOTLIN         dotted line
+       LI   R2,40             length of string is 40
+       BLWP @VMBW             write dotted line to VDP buffer
+       MOV  R2,@RECLEN        Pass the (40) length to DSR operation!
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R9,47             Only 47 lines on first page (w/header)
+       LI   R10,TRMTBL        starting addr. of term table in r10
+       CLR  R6                use r6 as payment pointer number
+PRNLIN LI   R8,VDPBUF+14      where to put each table line in VDP
+       BLWP @CLEAR            clear out 80long buffer to write to printer
+       DATA VDPBUF,80
+       LI   R7,3              number of values to display/line
+       C    R6,@NUMITG        check if out of payments but screen not done
+       JHE  PRNTMK            yep, done so do form feed, then close it!
+       INC  R6                Add 1 to make payment starts at no. "1"
+       BLWP @NUMASC           convert integer to ascii routine
+       DATA MOVBUF,2          buffer add, length of 3
+       MOV  R8,R0             get screen addr. of first fpv
+       AI   R0,-14            point to start of the printer buffer
+       LI   R1,MOVBUF         point to convert no. buffer
+       LI   R2,3              no. of digits
+       BLWP @VMBW             write to printer buffer
+       DEC  R6                Switch no. back to "computer-use" count
+PRNTMP MOV  R10,@PRNTMO       tell dspnum what value to convert from table
+       MOV  R8,@PRNTMQ        tell dspnum where to put in buffer
+       BLWP @DSPNUM           convert and display fpv
+PRNTMO DATA 0,0,10,2          val. address,type,left length,no. of decimals.
+PRNTMQ DATA 0                 screen address
+       AI   R10,8             point to next value in term table
+       MOV  R7,R1             Save R7 for below check
+       SLA  R1,1              mpy either 3,2,1 by 2
+       A    @SCRTBL(R1),R8    add either 11,14,15 to screen address
+       DEC  R7                check if display line done
+       JNE  PRNTMP            if not convert next value
+       INC  R6                increase by 1 the payment display number
+       MOV  @PRNLEN,@RECLEN   send length of print string to DSR routine!
+       BLWP @DSR              write out the line just finished to printer
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+       DEC  R9                Check if form feed is needed
+       JNE  PRNLIN            Nope, so keep printing on this page!
+       LI   R0,VDPBUF         Point to the printer buffer
+       LI   R1,12*256         Form feed control character
+       BLWP @VSBW             Send it to the buffer in VDP
+       LI   R2,1              Length of the string to be sent
+       MOV  R2,@RECLEN        Pass it to the below DSR operation
+       BLWP @DSR              write out a "form feed"
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         print position
+       LI   R1,TBLLIN         table header
+       LI   R2,40             length of string is 40
+       BLWP @VMBW             write header line to VDP buffer
+       MOV  R2,@RECLEN        Pass the (40) length to DSR operation!
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R0,VDPBUF         print position
+       LI   R1,DOTLIN         dotted line
+       LI   R2,40             length of string is 40
+       BLWP @VMBW             write dotted line to VDP buffer
+       MOV  R2,@RECLEN        Pass the (40) length to DSR operation!
+       BLWP @DSR              Write out the printer record
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+ 
+       LI   R9,58             Reset to max. length of a new page!
+       JMP  PRNLIN            Done, jump back and write next line out!
+*
+PRNTMK LI   R0,VDPBUF         Point to the printer buffer
+       LI   R1,12*256         Form feed control character
+       BLWP @VSBW             Send it to the buffer in VDP
+       LI   R2,1              Length of the string to be sent
+       MOV  R2,@RECLEN        Pass it to the below DSR operation
+       BLWP @DSR              write out a "form feed"
+       DATA WRITE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+PRNTMR BLWP @DSR              close the DIS/VAR 80 file
+       DATA CLOSE+DIS+VAR+APP,80,VDPBUF,PIONAM,DSRERR,DSRERR
+       BLWP @WRTSCR           write out finished print command line
+       DATA PRNCMD
+PRNTMZ BL   @SCAN             wait for keypress
+       CLR  R0                clear r0 as keyval is a byte
+       MOVB @KEYVAL,R0        put keyval in MSByte
+       CI   R0,13*256         check if enter was pressed
+       JEQ  PRNEXT            if so, exit term print
+       CI   R0,32*256         check if space was pressed
+       JEQ  PRNNXT            if so, print next term
+       JMP  PRNTMZ            no valid key pressed scan again
+PRNNXT BL   @COMP             Compare the balance to the payment
+       DATA ECHPAY,BALFPV     *
+       MOVB @STATUS,R0        Get the compare result status
+       COC  @GTBIT,R0         Check if balance greater payment
+       JNE  PRNTMZ            if not, don't allow another term table
+       B    @BLDTBN           Restart term calc for next term table
+PRNEXT B    @RECALC           Restart at the beginning
+*
+DSRERR BLWP @WRTSCR           ERROR!, display "error" line message
+       DATA PRNERR            *
+       BL   @SCAN             Wait until a key is pressed
+       JMP  PRNEXT            Upon key press, restart at the beginning

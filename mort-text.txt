@@ -1,0 +1,108 @@
+******************************************************************
+* MORT-TEXT  v1.00.9201.15  Text file for Amortization           *
+******************************************************************
+*                                                                *
+* Source Published: 05/04/2024 garyopa.com via ti99.atariage.com *
+*                                                                *
+* Copyrighted 1992 by O.P.A and 9T9 Assembly Sig and Gary Bowser *
+*                                                                *
+* Credit Must Be Included When Using Any Assembly Sources Below! *
+*                                                                *
+******************************************************************
+ 
+TITLE1 TEXT '****************************************'      0
+       TEXT '*       CANADA MORTGAGE AND LOAN       *'
+       TEXT '*         Amortization Program         *'
+       TEXT '****************************************'
+       BYTE 0
+TITLE2 TEXT '   Select:                              '      200
+       BYTE 0
+TITLE3 TEXT '         1...Canada Mortgage            '      280
+       TEXT '         (compounded semi-annually)     '
+       BYTE 0
+TITLE4 TEXT '         2...Simple Interest Loan       '      400
+       TEXT '                                        '
+       TEXT '         ....ESCAPE TO QUIT....         '
+       BYTE 0
+TITLE5 TEXT '   Written by:                          '      680
+       BYTE 0
+TITLE6 TEXT '            9T9 ASSEMBLY SIG            '      760
+       TEXT '            TORONTO, ONTARIO            '
+       TEXT '                 CANADA                 '
+       BYTE 0
+TITLE7 TEXT ' (c) 1991 By 9T9 Users Group in Toronto '      920
+       BYTE 0
+ 
+INPUT1 TEXT '****************************************'
+       TEXT '* CANADA MORTGAGE              (INPUT) *'
+       TEXT '****************************************'
+       BYTE 0
+INPUT2 TEXT '****************************************' 0
+       TEXT '* SIMPLE INTEREST LOAN         (INPUT) *'
+       TEXT '****************************************'
+       BYTE 0
+INPUTA TEXT ' Principal value     : $     50000.00   ' 160
+       TEXT ' Interest  value     :          10.00%  '
+       TEXT ' Amortization period :  (years) 25.00   '
+INPUTC TEXT '                                        ' 280
+       TEXT ' Type of payments    :                  '
+       TEXT '                                        '
+INPUTZ TEXT '----------------------------------------' 400
+       BYTE 0
+INPUTY TEXT '             payment : $                ' 440
+       BYTE 0
+MINTXT TEXT ' Minimun payment >>> : $                ' 480
+       BYTE 0
+TRMLNA TEXT ' Amount to calc in years  :      5.00   ' 480
+       TEXT ' Max. years for in memory :      x.xx   '
+       BYTE 0
+TRMLNB TEXT ' Number of payments selected :          ' 560
+       BYTE 0
+INPUTB TEXT ' Term Principal Paid : $                ' 677
+       TEXT '                                        '
+       TEXT ' Term Interest Paid  : $                ' 757
+       TEXT '                                        '
+       TEXT ' Term Balance Owing  : $                ' 837
+       TEXT '                                        '
+       TEXT '                                        '
+INTYPF TEXT '                                        '
+       BYTE 0
+INTYPE TEXT ' To select type use E (up) or X (down)  '  360
+       BYTE 0
+TBLLIN TEXT ' #     INTEREST   PRINCIPAL      BALANCE'  400
+       BYTE 0
+ASK01  TEXT '  D = Display table  / P = Print table  '  880
+       TEXT '  S = Print summary  / (Space returns)  '
+       BYTE 0
+TRMLNC TEXT '      Calculating...  Please Wait...   '   920
+       BYTE 0
+PRNLN1 TEXT '    Printing table... Please Wait...    '  920
+       BYTE 0
+PRNLN2 TEXT ' SpaceBar-Next term / Enter-Exit print  '  920
+       BYTE 0
+PRNLN3 TEXT ' Printer Device = '
+       BYTE 0
+PRNLN4 TEXT ' ERROR while printing.. Press any key!! '  920
+       BYTE 0
+CMDLIN TEXT ' E - Up    SpaceBar - Recalc Next term  '  880
+       TEXT ' X - Down     Enter - Exit Term Display '
+       BYTE 0
+MCHTXT TEXT 'YOU DON''T NEED A MORTGAGE! Press any key'  920
+       BYTE 0
+ 
+PAYTBL TEXT 'WEEKLY          '   ALL MUST BE 16 CHARS WIDE
+       TEXT 'BI-WEEKLY       '   *
+       TEXT 'MONTHLY         '   *
+       TEXT 'BI-MONTHLY      '   *
+       TEXT 'QUARTERLY       '   *
+       TEXT 'SEMI-ANNUALLY   '   *
+       TEXT '     ANNUALLY   '   *
+ 
+HDRLN0 TEXT '         Canadian Mortgage by 9T9 Assembly Sig'   46 bytes long
+HDRLN1 TEXT '$              at       % for       year' For printing table header
+       TEXT 's amortized for       years'              text is 67 bytes long and
+HDRLN2 TEXT '                     payments of           '   51 bytes!!
+       TEXT '    each'
+DOTLIN TEXT '------------------------------'
+TBLLN2 TEXT '----------------------------------------'
+       BYTE 0

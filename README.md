@@ -11,6 +11,8 @@ Enjoy!
 
 -=(GaryOPA)=-
 
+MORE INFO HERE: --> https://forums.atariage.com/topic/365946-release-canada-mortgage-and-loan-amortization-program-v100-by-9t9-assembly-sig-via-garyopa/
+
 *
 * CANMORTLAP  v1.00.9201.15 by 9T9 Asssembly Sig
 *
